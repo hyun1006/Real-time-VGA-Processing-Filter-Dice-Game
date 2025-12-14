@@ -1,13 +1,19 @@
 # 🎲 Real-time VGA Processing & Dice Game SoC
 
-![Language](https://img.shields.io/badge/Language-SystemVerilog-green?style=flat&logo=systemverilog)
-![IDE](https://img.shields.io/badge/IDE-Vivado_202x-red?style=flat&logo=xilinx)
-![FPGA](https://img.shields.io/badge/FPGA-Basys3_(Artix--7)-blue?style=flat&logo=fpga)
-![Protocol](https://img.shields.io/badge/Protocol-I2C_Master--Slave-orange?style=flat)
+<div align="center">
+
+![Language](https://img.shields.io/badge/Language-SystemVerilog-green?style=for-the-badge&logo=systemverilog&logoColor=white)
+![IDE](https://img.shields.io/badge/IDE-Vivado_202x-red?style=for-the-badge&logo=xilinx&logoColor=white)
+![FPGA](https://img.shields.io/badge/FPGA-Basys3_(Artix--7)-blue?style=for-the-badge&logo=xilinx&logoColor=white)
+![Protocol](https://img.shields.io/badge/Protocol-I2C_Master--Slave-orange?style=for-the-badge)
+
+<br>
 
 > **Dual-FPGA Architecture based Multimedia System**
 >
 > 고성능 VGA 디스플레이 컨트롤러, 실시간 객체 인식(Red Detection), 그리고 하드웨어 가속 기반의 주사위 게임 엔진을 탑재한 I2C 기반 FPGA SoC 프로젝트
+
+</div>
 
 ---
 
@@ -28,9 +34,7 @@
 ## 📖 2. 프로젝트 개요 (Overview)
 
 이 프로젝트는 **SystemVerilog**를 사용하여 FPGA 상에서 **실시간 영상 처리**와 **인터랙티브 게임**을 구동하는 멀티미디어 시스템입니다.
-단순한 필터 적용을 넘어, 입력된 비디오 스트림에서 **특정 색상(Red)을 실시간으로 검출**하고, **검출된 픽셀의 면적(Area)을 계산**하여 이를 시스템의 제어 신호(Trigger)로 활용하는 고급 영상 처리 기술을 구현했습니다.
-
-시스템은 **제어(Master)**와 **연산(Slave)**이 분리된 이원화 아키텍처로 구성되어 있으며, 두 모듈 간의 통신은 **I2C 프로토콜**을 사용하여 안정적인 커맨드 전송을 보장합니다.
+**Master FPGA**는 카메라 입력을 받아 **특정 색상(Red)을 실시간으로 검출**하고 처리하는 'Vision Processing Unit' 역할을 수행하며, **Slave FPGA**는 I2C로 전달받은 데이터에 따라 주사위 게임을 렌더링하고 VGA로 출력하는 'Display Controller' 역할을 수행합니다.
 
 ---
 
@@ -80,90 +84,102 @@ FPGA 클럭을 분주하여 VGA 표준 타이밍을 준수하는 디스플레이
 
 ### 4.1 Hardware Block Diagram
 
-시스템은 \*\*I2C 통신 프로토콜(SDA, SCL)\*\*을 통해 연결된 Master(제어)와 Slave(영상/게임) 모듈로 구성됩니다.
+시스템은 \*\*I2C 통신 프로토콜(SDA, SCL)\*\*을 통해 연결된 Master(연산/센싱)와 Slave(디스플레이/게임) 모듈로 구성됩니다.
 
 ```mermaid
 graph LR
-    subgraph "Master System (Controller Logic)"
-        UI["User Input"] --> FSM_M["Main Control FSM"]
-        LFSR["LFSR Random Gen"] --> FSM_M
-        FSM_M -->|"I2C Command"| I2C_M["I2C Master"]
+    subgraph "Master Board (Vision Processing)"
+        CAM["Camera (OV7670)"] --> FILTER["Image Filter<br>(Sobel/Gray)"]
+        CAM --> RED_DET["Red Detection<br>(Comparator)"]
+        
+        RED_DET -->|"Pixel Count"| LOGIC["Decision Logic"]
+        LOGIC -->|"Command"| I2C_M["I2C Master"]
     end
 
     I2C_M <==>|"SDA / SCL"| I2C_S
 
-    subgraph "Slave System (Video & Processing Engine)"
+    subgraph "Slave Board (Game & Display)"
         I2C_S["I2C Slave"] --> DEC["Command Decoder"]
         
-        CAM["Camera Input"] --> RED_DET["Red Detector"]
-        CAM --> FILTER["Image Filters"]
-        
-        RED_DET -->|"Binary Mask"| MUX
-        RED_DET -->|"Pixel Count"| LOGIC["Game Trigger Logic"]
-        
-        FILTER --> MUX["Video MUX"]
-        DICE["Dice Sprite Logic"] --> MUX
+        DEC --> DICE["Dice Game Logic"]
+        DICE --> MUX["Video MUX"]
         
         MUX -->|"RGB Data"| VGA_CORE["VGA Controller"]
         VGA_CORE --> MONITOR["VGA Display"]
     end
 ```
 
-### 4.2 Image Processing Pipeline
+-----
 
-게임 모드가 아닐 때는 다양한 실시간 필터링을 수행합니다.
+## 📂 5. 프로젝트 발표 자료 (Presentation)
 
-1.  **Red Extract:** 위에서 설명한 알고리즘을 통해 특정 색상 추출 및 이진화.
-2.  **Grayscale:** 인간 시각 특성을 고려한 가중치 적용 ($Y = 0.299R + 0.587G + 0.114B$).
-3.  **Inversion:** RGB 비트 반전을 통한 네거티브 효과.
-4.  **Sobel Edge:** 3x3 라인 버퍼(Line Buffer)를 이용한 실시간 윤곽선 검출.
+본 프로젝트의 상세한 아키텍처 설계, 색상 검출 알고리즘 원리 및 시연 결과는 아래 보고서를 통해 확인하실 수 있습니다.
+
+[![PDF Report](https://img.shields.io/badge/📄_PDF_Report-View_Document-FF0000?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](https://github.com/seokhyun-hwang/files/blob/main/Real-time-VGA-Processing-Filter-Dice-Game.pdf)
+
+<br>
 
 -----
 
-## 📂 5. 폴더 구조 (Directory Structure)
+## 📂 6. 폴더 구조 (Directory Structure)
+
+이 프로젝트는 두 개의 독립적인 FPGA 시스템으로 구성되어 있습니다. **Master Board**는 카메라 입력 및 영상 처리를 담당하며, **Slave Board**는 게임 로직 및 VGA 출력을 담당합니다.
 
 ```bash
 📦 Real-time-VGA-Processing-Filter-Dice-Game
- ├── 📂 Master                   # [Controller System]
- │    ├── 📜 master_top.sv       # Master 최상위 모듈
- │    ├── 📜 control_fsm.sv      # 메인 제어 및 LFSR 난수 로직
- │    ├── 📜 i2c_master.sv       # I2C 마스터 컨트롤러 (명령 송신)
- │    └── 📜 btn_debounce.sv     # 입력 신호 안정화
- ├── 📂 Slave                    # [Display & Processing System]
- │    ├── 📜 slave_top.sv        # Slave 최상위 모듈
- │    ├── 📜 vga_controller.sv   # [Core] VGA 타이밍 생성기
- │    ├── 📜 red_detection.sv    # [Core] 적색 검출 및 픽셀 카운터
- │    ├── 📜 image_filter.sv     # 영상 필터 (Sobel/Gray/Inv)
- │    ├── 📜 dice_gen.sv         # 주사위 스프라이트 렌더링
- │    ├── 📜 i2c_slave.sv        # I2C 슬레이브 컨트롤러 (명령 수신)
- │    └── 📜 video_mux.sv        # 출력 화면 선택
- └── 📜 README.md                # 프로젝트 문서
+ ├── 📂 Master_Board               # [Processing System] 카메라 및 영상 처리
+ │   ├── 📂 src
+ │   │   ├── 📜 master_top.sv      # [Top] Master System Wrapper
+ │   │   ├── 📜 control_fsm.sv     # Main Control Logic
+ │   │   ├── 📜 i2c_master.sv      # I2C Protocol Transmitter
+ │   │   ├── 📂 video_in           # 카메라 입력 로직
+ │   │   │   └── 📜 ov7670_capture.sv
+ │   │   └── 📂 processing         # [Core] 영상 처리 알고리즘
+ │   │       ├── 📜 red_detection.sv   # Red Color Detector & Comparator
+ │   │       ├── 📜 image_filter.sv    # Sobel / Gray / Invert Filters
+ │   │       └── 📜 pixel_counter.sv   # Area Calculation Logic
+ │   └── 📂 constrs
+ │       └── 📜 Master_Basys3.xdc  # Pin Constraints for Master
+ │
+ ├── 📂 Slave_Board                # [Display System] 게임 및 VGA 출력
+ │   ├── 📂 src
+ │   │   ├── 📜 slave_top.sv       # [Top] Slave System Wrapper
+ │   │   ├── 📜 i2c_slave.sv       # I2C Protocol Receiver
+ │   │   ├── 📂 display_core       # 디스플레이 관련 로직
+ │   │   │   ├── 📜 vga_controller.sv  # VGA Timing Generator
+ │   │   │   └── 📜 video_mux.sv       # Output Selector
+ │   │   └── 📂 game_logic         # 게임 엔진
+ │   │       ├── 📜 dice_game_fsm.sv   # Dice Game State Machine
+ │   │       └── 📜 dice_renderer.sv   # Dice Sprite Renderer
+ │   └── 📂 constrs
+ │       └── 📜 Slave_Basys3.xdc   # Pin Constraints for Slave
+ │
+ ├── 📂 Docs                       # 문서 및 발표 자료
+ │   └── 📜 Real-time-VGA-Processing-Filter-Dice-Game.pdf
+ └── 📜 README.md
 ```
 
 -----
 
-## 🚀 6. 실행 및 검증 (How to Run)
+## 🚀 7. 실행 및 검증 (How to Run)
 
 ### 하드웨어 설정 (Hardware Setup)
 
-1.  **FPGA Board:** Digilent Basys 3 (Xilinx Artix-7).
-2.  **Display:** VGA 케이블을 사용하여 모니터와 보드를 연결.
-3.  **Camera:** OV7670 등의 카메라 모듈 연결 (PMOD 포트 사용).
-4.  **Connection:** Master와 Slave 보드 간의 \*\*I2C 라인 (SDA, SCL)\*\*을 연결합니다. (필요 시 풀업 저항 확인)
+1.  **Master Board:** OV7670 카메라를 PMOD 포트에 연결하고 스위치를 통해 필터 모드를 설정합니다.
+2.  **Slave Board:** VGA 모니터를 연결하여 게임 화면을 출력합니다.
+3.  **Connection:** 두 보드 간의 **I2C 라인 (SDA, SCL)** 및 Ground를 서로 연결합니다.
 
 ### 조작 방법 (Controls)
 
-  * **Mode Control:**
-      * **Button Center:** 주사위 게임 모드 진입 / 굴리기.
-  * **Video Filter Selection:**
-      * **Switch 0:** Grayscale Mode.
-      * **Switch 1:** Inversion Mode.
-      * **Switch 2:** Sobel Edge Detection.
-      * **Switch 3:** **Red Color Detection Mode (Object Recognition).**
+  * **Master Board:**
+      * **Switch 0\~2:** 영상 필터 모드 변경 (Gray, Invert, Sobel).
+      * **Switch 3:** **Red Detection Mode (ON/OFF).**
+  * **Slave Board:**
+      * **Monitor:** 마스터에서 빨간색 물체가 감지되면 자동으로 주사위가 굴러갑니다(Roll).
 
 -----
 
-> *Developed by [hyun1006](https://www.google.com/search?q=https://github.com/hyun1006)*
+Copyright ⓒ 2025. SEOKHYUN HWANG. All rights reserved.
 
 ```
 ```
